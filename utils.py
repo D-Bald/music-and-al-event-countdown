@@ -18,7 +18,7 @@ def make_output_table(df):
         body.append(entry)
 
     output = t2a(
-        header=["Titel", "Start Datum", "Verbleibende Tage"],
+        header=["Titel", "Start-Datum", "Verbleibende Tage"],
         body=body,
         style=PresetStyle.thin_compact
     )
@@ -31,7 +31,7 @@ def make_output_table_for_event(df: pd.DataFrame, event: str):
 
     # Erstelle Tabelle
     output = t2a(
-        header=["Titel", "Start Datum", "Verbleibende Tage"],
+        header=["Titel", "Start-Datum", "Verbleibende Tage"],
         body=[[event["title"], event["start_date"], _exclamation_if_zero_days_left(event["days_left"])]],
         style=PresetStyle.thin_compact
     )

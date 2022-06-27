@@ -17,6 +17,16 @@ bot = commands.Bot(command_prefix=PREFIX)
 scheduled_subscription_jobs = {
 }  # used to store the jobs per guild, to be able to unsubscribe and therefore cancel the job for the unsubscribing guild
 
+@bot.command()
+async def events(ctx):
+    """Sends back a list of the next planned events.
+
+    Args:
+        ctx: discord.py context.
+    """
+    events = await event_calendar.get_all_events()
+    output = utils.make_output_table(events)
+    await ctx.send(f"```{output}```")
 
 @bot.command()
 async def subscribe(ctx):
@@ -25,17 +35,20 @@ async def subscribe(ctx):
     Args:
         ctx: discord.py context.
     """
-    # job = schedule.every().day.at(PUBLISH_COUNTDOWN_TIME).do(asyncio.create_task, publish_daylie_countdown(ctx))
-    job = schedule.every(1).minutes.do(asyncio.create_task,
-                                       publish_daylie_countdown(ctx))
-    scheduled_subscription_jobs[ctx.guild.id] = job
 
-    print("----------------------")
-    print("Current jobs (guild_id: job_details):\n")
-    pprint(scheduled_subscription_jobs)
-    print("----------------------")
+    # only add new subscription if guild is not subscribed yet
+    if ctx.guild.id not in scheduled_subscription_jobs:
+        job = schedule.every().day.at(PUBLISH_COUNTDOWN_TIME).do(asyncio.create_task, publish_daylie_countdown(ctx))
+        scheduled_subscription_jobs[ctx.guild.id] = job
 
-    await ctx.send(f"Subscription successful.")
+        print("----------------------")
+        print("Current jobs (guild_id: job_details):\n")
+        pprint(scheduled_subscription_jobs)
+        print("----------------------")
+
+        await ctx.send(f"Subscription successful.")
+    else:
+        await ctx.send(f"Already subscribed.")
 
 
 @bot.command()
@@ -63,15 +76,23 @@ async def publish_daylie_countdown(ctx):
         ctx: discord.py context.
     """
     event = await event_calendar.get_next_event()
-    join = discord.Embed(description= '%s '%(event["title"]),title = 'Nächste Veranstaltung', colour = 0xFFFF)
+    join = discord.Embed(description= '__%s__'%(event["title"]),title = 'Nächste Veranstaltung', colour = 0xFFFF)
     # join.set_thumbnail(url = WEBSCRAPER_ERGEBNIS)
     # join.add_field(name = '__Titel__', value = event["title"])
-    join.add_field(name = '__Start__', value = event["start_date"])
-    join.add_field(name = '__Ende__', value = event["end_date"])
+    join.add_field(name = 'Start', value = event["start_date"])
+    join.add_field(name = 'Ende', value = event["end_date"])
+    join.add_field(name = 'Link', value = 'https://www.music-and-al.de/veranstaltungen/' + event["event"])
 
-    join.set_footer(text ='Created: %s'%time)
+    # join.set_footer(text ='Created: %s'%time)
 
     await ctx.send(embed = join)
+
+    # reschedule the job due to exception=RuntimeError('cannot reuse already awaited coroutine')
+    # (ugly bug fix)
+    job_old = scheduled_subscription_jobs.pop(ctx.guild.id)
+    schedule.cancel_job(job_old)
+    job_new = schedule.every().day.at(PUBLISH_COUNTDOWN_TIME).do(asyncio.create_task, publish_daylie_countdown(ctx))
+    scheduled_subscription_jobs[ctx.guild.id] = job_new
 
 
 async def run_scheduled_jobs(sleep=1):
