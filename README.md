@@ -14,6 +14,5 @@ Add the bot to your server by clicking [here](https://discord.com/api/oauth2/aut
 MIT License. Copyright (c) 2022 David Baldauf.
 
 # TODO
-- !events command to list all events
-- get event details via webscraper
+- get next event dates and more event details via webscraper
 - Missing docstrings (e.g in utils)

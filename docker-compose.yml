@@ -3,7 +3,5 @@ services:
   bot:
     image: lemmurb/music-and-al-event-countdown-bot:latest
     build: .
-    volumes:
-      - .:/data
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
