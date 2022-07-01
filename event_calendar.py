@@ -39,9 +39,9 @@ def days_left(date_str: str):
     
     Returns:
         Days until the given date as integer.
-        
+
     """
-    # parse from string
+    # Parse from string
     date = utils.string_to_datetime(date_str).date()
     today = datetime.datetime.today().date()
 
