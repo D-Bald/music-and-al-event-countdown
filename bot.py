@@ -1,8 +1,5 @@
 import os
-import asyncio
-import schedule
 import discord
-from pprint import pprint
 from discord.ext import commands
 from dotenv import load_dotenv
 from config import PREFIX, PUBLISH_COUNTDOWN_TIME
@@ -55,8 +52,7 @@ async def next(ctx):
 @bot.command()
 async def subscribe(ctx):
     """
-    Schedules a job to be executed at PUBLISH_COUNTDOWN_TIME from config.py and stores guild_id and job-instance
-    as key-value pair in a global dictionary `scheduled_subscription_jobs` for later cancelation.
+    Schedules a job to be executed at PUBLISH_COUNTDOWN_TIME from config.py.
 
     Args:
         ctx: discord.py context.
@@ -64,14 +60,7 @@ async def subscribe(ctx):
 
     # Only add new subscription if guild is not subscribed yet
     if ctx.guild.id not in scheduled_subscription_jobs:
-        job = schedule.every().day.at(PUBLISH_COUNTDOWN_TIME).do(asyncio.create_task, publish_daylie_countdown(ctx))
-        scheduled_subscription_jobs[ctx.guild.id] = job
-
-        print("----------------------")
-        print("Current jobs (guild_id: job_details):\n")
-        pprint(scheduled_subscription_jobs)
-        print("----------------------")
-
+        utils.schedule_task(ctx, publish_daylie_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
         await ctx.send(f"Subscription successful.")
     else:
         await ctx.send(f"Already subscribed.")
@@ -86,13 +75,7 @@ async def unsubscribe(ctx):
     Args:
         ctx: discord.py context.
     """
-    job = scheduled_subscription_jobs.pop(ctx.guild.id)
-    schedule.cancel_job(job)
-
-    print("----------------------")
-    print("Current jobs (guild_id: job_details):\n")
-    pprint(scheduled_subscription_jobs)
-    print("----------------------")
+    utils.remove_task(ctx, scheduled_subscription_jobs)
 
     await ctx.send(f"Successfully unsubsribed.")
 
@@ -113,26 +96,12 @@ async def publish_daylie_countdown(ctx):
 
     await ctx.send(f"```{output}```")
 
-    # Reschedule the job due to exception=RuntimeError('cannot reuse already awaited coroutine')
-    # (ugly bug fix)
-    job_old = scheduled_subscription_jobs.pop(ctx.guild.id)
-    schedule.cancel_job(job_old)
-    job_new = schedule.every().day.at(PUBLISH_COUNTDOWN_TIME).do(asyncio.create_task, publish_daylie_countdown(ctx))
-    scheduled_subscription_jobs[ctx.guild.id] = job_new
-
-
-async def run_scheduled_jobs(sleep=1):
-    """
-    Loop to run jobs as soon as the scheduler marks them as pending.
-    
-    This is executed as task in the handler for the 'on_ready' bot event.
-
-    Args:
-        sleep: number of seconds to wait between retries to run pending jobs.
-    """
-    while True:
-        schedule.run_pending()
-        await asyncio.sleep(sleep)
+    # This is an ugly bugfix to work around the exception:
+    #    RuntimeError('cannot reuse already awaited coroutine')
+    # Remove and cancel old Job
+    utils.remove_task(ctx, scheduled_subscription_jobs)
+    # Schedule new Job
+    utils.schedule_task(ctx, publish_daylie_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
 
 
 @bot.event
@@ -144,7 +113,7 @@ async def on_ready():
     print("----------------------")
 
     # Run periodically scheduled tasks
-    bot.loop.create_task(run_scheduled_jobs(sleep=1))
+    bot.loop.create_task(utils.run_scheduled_jobs(sleep=1))
 
 
 bot.run(TOKEN)

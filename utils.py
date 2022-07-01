@@ -1,5 +1,8 @@
 from datetime import datetime
 import pandas as pd
+import asyncio
+import schedule
+from pprint import pprint
 from table2ascii import table2ascii as t2a, PresetStyle
 from config import DATE_FORMAT
 
@@ -81,6 +84,59 @@ def format_date_string(date_str: str):
     """
     date = string_to_datetime(date_str)
     return datetime.strftime(date, DATE_FORMAT)
+def schedule_task(ctx, func, time, scheduled_subscription_jobs):
+    """
+    Schedules new job for the given func that is executed with ctx as parameter at the given time.
+    
+    Stores guild_id and job-instance as key-value pair in a global dictionary `scheduled_subscription_jobs` for later cancelation.
+    Prints out the resulting list of current scheduled jobs.
+    The func is scheduled as asynchronous task so it has to be awaited or run as task itself!
+
+    Args:
+        ctx: discord.py context
+        func: the function that is run with ctx as parameter
+        time: time in string format that the scheduler uses to schedule the task
+        scheduled_subscription_jobs: dictionary containing all scheduled jobs associated to the guild_id
+    """
+    job = schedule.every().day.at(time).do(asyncio.create_task, func(ctx))
+    scheduled_subscription_jobs[ctx.guild.id] = job
+
+    print("----------------------")
+    print("Current jobs (guild_id: job_details):\n")
+    pprint(scheduled_subscription_jobs)
+    print("----------------------")
+
+def remove_task(ctx, scheduled_subscription_jobs):
+    """
+    Removes the task associated to the given context in the dictionary and cancels it from scheduler.
+
+    Prints out the resulting list of current scheduled jobs.
+
+    Args:
+        ctx: discord.py context
+        scheduled_subscription_jobs: dictionary containing all scheduled jobs associated to the guild_id
+    """
+    job = scheduled_subscription_jobs.pop(ctx.guild.id)
+    schedule.cancel_job(job)
+
+    print("----------------------")
+    print("Current jobs (guild_id: job_details):\n")
+    pprint(scheduled_subscription_jobs)
+    print("----------------------")
+
+async def run_scheduled_jobs(sleep=1):
+    """
+    Loop to run jobs as soon as the scheduler marks them as pending.
+    
+    This is executed as task in the handler for the 'on_ready' bot event.
+
+    Args:
+        sleep: number of seconds to wait between retries to run pending jobs.
+    """
+    while True:
+        schedule.run_pending()
+        await asyncio.sleep(sleep)
+
 
 def _exclamation_if_zero_days_left(days_left):
     if days_left == 0:
