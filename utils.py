@@ -4,7 +4,8 @@ from table2ascii import table2ascii as t2a, PresetStyle
 from config import DATE_FORMAT
 
 def make_output_table(df):
-    """Builds a markdown table as code-block from given dataframe.
+    """
+    Builds a markdown table as code-block from given dataframe.
 
     Args:
         df: pandas DataFrame with columns `name`, `date` and `days_left`
@@ -39,7 +40,8 @@ def make_output_table_for_event(df: pd.DataFrame, event: str):
     return output
 
 def check_date_format(date: str):
-    """Checks if the given date has the date format specified in config.py.
+    """
+    Checks if the given date has the date format specified in config.py.
 
     Args:
         date: the date as string
@@ -55,7 +57,8 @@ def check_date_format(date: str):
     return res
 
 def string_to_datetime(date_str: str):
-    """Parses a date string to datetime format.
+    """
+    Parses a date string to datetime format.
 
     Args:
         date_str: the date as string with format as specified in config.py
@@ -67,7 +70,8 @@ def string_to_datetime(date_str: str):
     return date
 
 def format_date_string(date_str: str):
-    """parses a date string to string with format specified in config.py.
+    """
+    Parses a date string to string with format specified in config.py.
 
     Args:
         date_str: the date as string with format like `"%d.%m.%Y"`

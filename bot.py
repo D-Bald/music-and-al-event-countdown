@@ -14,12 +14,14 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 
 bot = commands.Bot(command_prefix=PREFIX)
 
-scheduled_subscription_jobs = {
-}  # used to store the jobs per guild, to be able to unsubscribe and therefore cancel the job for the unsubscribing guild
+# Dictionary to store the jobs per guild to be able to unsubscribe and therefore cancel the job for the unsubscribing guild
+scheduled_subscription_jobs = {}
+
 
 @bot.command()
 async def events(ctx):
-    """Sends back a list of the next planned events.
+    """
+    Sends back a list of the next planned events.
 
     Args:
         ctx: discord.py context.
@@ -28,49 +30,11 @@ async def events(ctx):
     output = utils.make_output_table(events)
     await ctx.send(f"```{output}```")
 
-@bot.command()
-async def subscribe(ctx):
-    """Schedules a job to be executed at PUBLISH_COUNTDOWN_TIME from config.py and stores guild_id and job-instance as key-value pair in a global dictionary `scheduled_subscription_jobs` for later cancelation.
-
-    Args:
-        ctx: discord.py context.
-    """
-
-    # only add new subscription if guild is not subscribed yet
-    if ctx.guild.id not in scheduled_subscription_jobs:
-        job = schedule.every().day.at(PUBLISH_COUNTDOWN_TIME).do(asyncio.create_task, publish_daylie_countdown(ctx))
-        scheduled_subscription_jobs[ctx.guild.id] = job
-
-        print("----------------------")
-        print("Current jobs (guild_id: job_details):\n")
-        pprint(scheduled_subscription_jobs)
-        print("----------------------")
-
-        await ctx.send(f"Subscription successful.")
-    else:
-        await ctx.send(f"Already subscribed.")
-
 
 @bot.command()
-async def unsubscribe(ctx):
-    """Removes a job associated with the guild_id derived from the context from the global dictionary `scheduled_subscription_jobs` and cancel the job from the scheduler.
-
-    Args:
-        ctx: discord.py context.
+async def next(ctx):
     """
-    job = scheduled_subscription_jobs.pop(ctx.guild.id)
-    schedule.cancel_job(job)
-
-    print("----------------------")
-    print("Current jobs (guild_id: job_details):\n")
-    pprint(scheduled_subscription_jobs)
-    print("----------------------")
-
-    await ctx.send(f"Successfully unsubsribed.")
-
-
-async def publish_daylie_countdown(ctx):
-    """Fetches next event and publishes it to the given context. On subscription a task is created and scheduled to execute this coroutine with the correct context (e.g. to send the message to the channel, that the subscribe command was called in).
+    Sends back details about the next planned event.
 
     Args:
         ctx: discord.py context.
@@ -87,7 +51,69 @@ async def publish_daylie_countdown(ctx):
 
     await ctx.send(embed = join)
 
-    # reschedule the job due to exception=RuntimeError('cannot reuse already awaited coroutine')
+
+@bot.command()
+async def subscribe(ctx):
+    """
+    Schedules a job to be executed at PUBLISH_COUNTDOWN_TIME from config.py and stores guild_id and job-instance
+    as key-value pair in a global dictionary `scheduled_subscription_jobs` for later cancelation.
+
+    Args:
+        ctx: discord.py context.
+    """
+
+    # Only add new subscription if guild is not subscribed yet
+    if ctx.guild.id not in scheduled_subscription_jobs:
+        job = schedule.every().day.at(PUBLISH_COUNTDOWN_TIME).do(asyncio.create_task, publish_daylie_countdown(ctx))
+        scheduled_subscription_jobs[ctx.guild.id] = job
+
+        print("----------------------")
+        print("Current jobs (guild_id: job_details):\n")
+        pprint(scheduled_subscription_jobs)
+        print("----------------------")
+
+        await ctx.send(f"Subscription successful.")
+    else:
+        await ctx.send(f"Already subscribed.")
+
+
+@bot.command()
+async def unsubscribe(ctx):
+    """
+    Removes a job associated with the guild_id derived from the context from the global dictionary `scheduled_subscription_jobs`
+    and cancel the job from the scheduler.
+
+    Args:
+        ctx: discord.py context.
+    """
+    job = scheduled_subscription_jobs.pop(ctx.guild.id)
+    schedule.cancel_job(job)
+
+    print("----------------------")
+    print("Current jobs (guild_id: job_details):\n")
+    pprint(scheduled_subscription_jobs)
+    print("----------------------")
+
+    await ctx.send(f"Successfully unsubsribed.")
+
+
+async def publish_daylie_countdown(ctx):
+    """
+    Fetches the list of events and publishes it to the given context.
+
+    On subscription a task is created and scheduled to execute this coroutine with the correct context
+    (e.g. to send the message to the channel, that the subscribe command was called in).
+
+    Args:
+        ctx: discord.py context.
+    """
+
+    events = await event_calendar.get_all_events()
+    output = utils.make_output_table(events)
+
+    await ctx.send(f"```{output}```")
+
+    # Reschedule the job due to exception=RuntimeError('cannot reuse already awaited coroutine')
     # (ugly bug fix)
     job_old = scheduled_subscription_jobs.pop(ctx.guild.id)
     schedule.cancel_job(job_old)
@@ -96,7 +122,10 @@ async def publish_daylie_countdown(ctx):
 
 
 async def run_scheduled_jobs(sleep=1):
-    """Loop to run jobs as soon as the scheduler marks them as pending. This is executed as task in the handler for the 'on_ready' bot event.
+    """
+    Loop to run jobs as soon as the scheduler marks them as pending.
+    
+    This is executed as task in the handler for the 'on_ready' bot event.
 
     Args:
         sleep: number of seconds to wait between retries to run pending jobs.
