@@ -91,10 +91,7 @@ async def publish_daylie_countdown(ctx):
         ctx: discord.py context.
     """
 
-    events = await event_calendar.get_all_events()
-    output = utils.make_output_table(events)
-
-    await ctx.send(f"```{output}```")
+    events(ctx)
 
     # This is an ugly bugfix to work around the exception:
     #    RuntimeError('cannot reuse already awaited coroutine')
