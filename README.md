@@ -9,7 +9,7 @@ Add the bot to your server by clicking [here](https://discord.com/api/oauth2/aut
 - `!events` - lists all stored events with countdown
 - `!next` - shows details about next upcoming event
 - `!subscribe` - to daily countdown for list of events
-- `!unsubscribe` - of daylie countdown
+- `!unsubscribe` - of daily countdown
 
 ## License
 MIT License. Copyright (c) 2022 David Baldauf.

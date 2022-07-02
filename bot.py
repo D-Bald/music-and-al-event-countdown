@@ -61,7 +61,7 @@ async def subscribe(ctx):
 
     # Only add new subscription if guild is not subscribed yet
     if ctx.guild.id not in scheduled_subscription_jobs:
-        utils.schedule_task(ctx, publish_daylie_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
+        utils.schedule_task(ctx, publish_daily_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
         await ctx.send(f"Subscription successful.")
     else:
         await ctx.send(f"Already subscribed.")
@@ -81,7 +81,7 @@ async def unsubscribe(ctx):
     await ctx.send(f"Successfully unsubsribed.")
 
 
-async def publish_daylie_countdown(ctx):
+async def publish_daily_countdown(ctx):
     """
     Fetches the list of events and publishes it to the given context.
 
@@ -98,7 +98,7 @@ async def publish_daylie_countdown(ctx):
     # Remove and cancel old Job
     utils.remove_task(ctx, scheduled_subscription_jobs)
     # Schedule new Job
-    utils.schedule_task(ctx, publish_daylie_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
+    utils.schedule_task(ctx, publish_daily_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
 
 
 @bot.event
