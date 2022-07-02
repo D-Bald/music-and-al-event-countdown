@@ -1,3 +1,4 @@
+import datetime
 import os
 import discord
 from discord.ext import commands
@@ -90,8 +91,7 @@ async def publish_daylie_countdown(ctx):
     Args:
         ctx: discord.py context.
     """
-
-    events(ctx)
+    await events(ctx)
 
     # This is an ugly bugfix to work around the exception:
     #    RuntimeError('cannot reuse already awaited coroutine')
