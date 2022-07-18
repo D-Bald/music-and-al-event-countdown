@@ -1,10 +1,15 @@
+import asyncio
+import csv
+import schedule
 from datetime import datetime
 import pandas as pd
-import asyncio
-import schedule
 from pprint import pprint
 from table2ascii import table2ascii as t2a, PresetStyle
 from config import DATE_FORMAT
+
+#################################################
+# Output Appearance
+#################################################
 
 def make_output_table(df):
     """
@@ -29,6 +34,7 @@ def make_output_table(df):
 
     return output
 
+
 def make_output_table_for_event(df: pd.DataFrame, event: str):
     # Suche den Eintrag für den gegebenen Namen
     event = df.iloc[df[df["event"] == event].index[0]]
@@ -41,6 +47,10 @@ def make_output_table_for_event(df: pd.DataFrame, event: str):
     )
 
     return output
+
+#################################################
+# Date tools
+#################################################
 
 def check_date_format(date: str):
     """
@@ -72,6 +82,7 @@ def string_to_datetime(date_str: str):
     date = datetime.strptime(date_str, DATE_FORMAT)
     return date
 
+
 def format_date_string(date_str: str):
     """
     Parses a date string to string with format specified in config.py.
@@ -84,45 +95,65 @@ def format_date_string(date_str: str):
     """
     date = string_to_datetime(date_str)
     return datetime.strftime(date, DATE_FORMAT)
-def schedule_task(ctx, func, time, scheduled_subscription_jobs):
+
+
+def _exclamation_if_zero_days_left(days_left):
+    if days_left == 0:
+        return "HEUTE GEHT ES LOS!"
+    else:
+        return days_left
+
+#################################################
+# Scheduler and repo for subscriptions
+#################################################
+
+def schedule_task(guild_channel, func, time, jobs_dict):
     """
     Schedules new job for the given func that is executed with ctx as parameter at the given time.
     
-    Stores guild_id and job-instance as key-value pair in a global dictionary `scheduled_subscription_jobs` for later cancelation.
+    Stores channel_id and job-instance as key-value pair in a global dictionary `scheduled_subscription_jobs` for later cancelation.
     Prints out the resulting list of current scheduled jobs.
     The func is scheduled as asynchronous task so it has to be awaited or run as task itself!
 
     Args:
-        ctx: discord.py context
+        guild_channel: discord.py discord.abc.GuildChannel
         func: the function that is run with ctx as parameter
         time: time in string format that the scheduler uses to schedule the task
-        scheduled_subscription_jobs: dictionary containing all scheduled jobs associated to the guild_id
+        jobs_dict: dictionary containing all scheduled jobs associated to the channel_id
     """
-    job = schedule.every().day.at(time).do(asyncio.create_task, func(ctx))
-    scheduled_subscription_jobs[ctx.guild.id] = job
+    job = schedule.every().day.at(time).do(asyncio.create_task, func(guild_channel))
+    # job = schedule.every(10).seconds.do(asyncio.create_task, func(guild_channel)) # uncomment for debugging
 
-    print("----------------------")
-    print("Current jobs (guild_id: job_details):\n")
-    pprint(scheduled_subscription_jobs)
-    print("----------------------")
+    jobs_dict[guild_channel.id] = job
 
-def remove_task(ctx, scheduled_subscription_jobs):
+    _save_subscribed_channels(guild_channel)
+
+    # print("----------------------")
+    # print("Current jobs (channel_id: job_details):\n")
+    # pprint(jobs_dict)
+    # print("----------------------")
+
+
+def remove_task(guild_channel, jobs_dict):
     """
     Removes the task associated to the given context in the dictionary and cancels it from scheduler.
 
     Prints out the resulting list of current scheduled jobs.
 
     Args:
-        ctx: discord.py context
-        scheduled_subscription_jobs: dictionary containing all scheduled jobs associated to the guild_id
+        guild_channel: discord.py discord.abc.GuildChannel
+        jobs_dict: dictionary containing all scheduled jobs associated to the channel_id
     """
-    job = scheduled_subscription_jobs.pop(ctx.guild.id)
+    job = jobs_dict.pop(guild_channel.id)
     schedule.cancel_job(job)
 
-    print("----------------------")
-    print("Current jobs (guild_id: job_details):\n")
-    pprint(scheduled_subscription_jobs)
-    print("----------------------")
+    _delete_subscribed_channel(guild_channel)
+
+    # print("----------------------")
+    # print("Current jobs (channel_id: job_details):\n")
+    # pprint(jobs_dict)
+    # print("----------------------")
+
 
 async def run_scheduled_jobs(sleep=1):
     """
@@ -138,8 +169,41 @@ async def run_scheduled_jobs(sleep=1):
         await asyncio.sleep(sleep)
 
 
-def _exclamation_if_zero_days_left(days_left):
-    if days_left == 0:
-        return "HEUTE GEHT ES LOS!"
-    else:
-        return days_left
+def load_subscribed_channels():
+    """
+    Reads channel ids to be scheduled and returns them as list.
+
+    Returns:
+        channel_ids: list of ids of subscribed channels
+    """
+    df_subs = pd.read_csv("./data/subscriptions.csv")
+    subs_list = df_subs["channel_id"].values.tolist()
+    return subs_list
+
+
+def _save_subscribed_channels(channel):
+    """
+    Saves the given channel to be scheduled again on start-up.
+
+    Args:
+        guild_channel: discord.py discord.abc.GuildChannel
+    """
+    df = pd.read_csv("./data/subscriptions.csv")
+    if not any(df.channel_id == channel.id):
+        df = pd.concat(
+            [df, pd.DataFrame({"channel_id": [channel.id]})],
+            ignore_index=True,
+        )
+        df.to_csv("./data/subscriptions.csv", index=False)
+
+def _delete_subscribed_channel(channel):
+    """
+    Deletes the given channel from the repo.
+
+    Args:
+        channel: discord.py discord.abc.GuildChannel
+    """
+    df_subs = pd.read_csv('./data/subscriptions.csv')
+    df_subs = df_subs.drop(df_subs[df_subs['channel_id'] == channel.id].index)
+
+    df_subs.to_csv('./data/subscriptions.csv', index=False)

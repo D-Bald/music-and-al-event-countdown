@@ -1,18 +1,20 @@
-import datetime
+import asyncio
 import os
+from datetime import datetime
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from config import PREFIX, PUBLISH_COUNTDOWN_TIME
 import event_calendar
 import utils
+from custom_decorators import async_repeatable
+from config import PREFIX, PUBLISH_COUNTDOWN_TIME
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 bot = commands.Bot(command_prefix=PREFIX)
 
-# Dictionary to store the jobs per guild to be able to unsubscribe and therefore cancel the job for the unsubscribing guild
+# Dictionary to store the jobs per channel id to be able to unsubscribe and therefore cancel the job for the unsubscribing channel
 scheduled_subscription_jobs = {}
 
 
@@ -38,6 +40,19 @@ async def next(ctx):
         ctx: discord.py context.
     """
     event = await event_calendar.get_next_event()
+    embed = _make_event_embed(event)
+
+    await ctx.send(embed = embed)
+
+def _make_event_embed(event):
+    """
+    Creates a discord embed for the given event.
+
+    Args:
+        event: event (currently as pandas dataframe)
+    Returns:
+        discord.py embed
+    """
     join = discord.Embed(description= '__%s__'%(event["title"]),title = 'Nächste Veranstaltung', colour = 0xFFFF)
     # join.set_thumbnail(url = WEBSCRAPER_ERGEBNIS)
     # join.add_field(name = '__Titel__', value = event["title"])
@@ -47,8 +62,7 @@ async def next(ctx):
 
     # join.set_footer(text ='Created: %s'%time)
 
-    await ctx.send(embed = join)
-
+    return join
 
 @bot.command()
 async def subscribe(ctx):
@@ -60,12 +74,21 @@ async def subscribe(ctx):
     """
 
     # Only add new subscription if guild is not subscribed yet
-    if ctx.guild.id not in scheduled_subscription_jobs:
-        utils.schedule_task(ctx, publish_daily_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
+    if ctx.channel.id not in scheduled_subscription_jobs:
+        await _subscribe_channel(ctx.channel)
+
         await ctx.send(f"Subscription successful.")
     else:
         await ctx.send(f"Already subscribed.")
 
+async def _subscribe_channel(channel):
+    """
+    Schedules a job to be executed at PUBLISH_BIRTHDAYS_TIME from config.py.
+
+    Args:
+        channel_id: discord.py channel
+    """
+    utils.schedule_task(channel, publish_daily_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
 
 @bot.command()
 async def unsubscribe(ctx):
@@ -76,12 +99,12 @@ async def unsubscribe(ctx):
     Args:
         ctx: discord.py context.
     """
-    utils.remove_task(ctx, scheduled_subscription_jobs)
+    utils.remove_task(ctx.channel, scheduled_subscription_jobs)
 
     await ctx.send(f"Successfully unsubsribed.")
 
-
-async def publish_daily_countdown(ctx):
+@async_repeatable(jobs_dict=scheduled_subscription_jobs, time=PUBLISH_COUNTDOWN_TIME)
+async def publish_daily_countdown(guild_channel):
     """
     Fetches the list of events and publishes it to the given context.
 
@@ -89,16 +112,12 @@ async def publish_daily_countdown(ctx):
     (e.g. to send the message to the channel, that the subscribe command was called in).
 
     Args:
-        ctx: discord.py context.
+        guild_channel: discord.py discord.abc.GuildChannel
     """
-    await events(ctx)
+    event = await event_calendar.get_next_event()
+    embed = _make_event_embed(event)
 
-    # This is an ugly bugfix to work around the exception:
-    #    RuntimeError('cannot reuse already awaited coroutine')
-    # Remove and cancel old Job
-    utils.remove_task(ctx, scheduled_subscription_jobs)
-    # Schedule new Job
-    utils.schedule_task(ctx, publish_daily_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
+    await guild_channel.send(embed = embed)
 
 
 @bot.event
@@ -107,10 +126,22 @@ async def on_ready():
     print("Beigetreten als")
     print("Username: %s" % bot.user.name)
     print("ID: %s" % bot.user.id)
+    print("Zeit: %s"%datetime.now().time())
+    print("----------------------")
+
+    # Load saved subscriptions
+    subs_list = utils.load_subscribed_channels()
+    channels = [await bot.fetch_channel(channel_id) for channel_id in subs_list]
+    await asyncio.gather(*[_subscribe_channel(channel) for channel in channels])
+
+    print("Scheduled subscription jobs")
+    print(scheduled_subscription_jobs)
     print("----------------------")
 
     # Run periodically scheduled tasks
     bot.loop.create_task(utils.run_scheduled_jobs(sleep=1))
 
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    bot.run(TOKEN)
+
