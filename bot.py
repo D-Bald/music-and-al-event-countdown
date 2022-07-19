@@ -102,7 +102,7 @@ async def unsubscribe(ctx):
     """
     async_scheduling.remove_task(ctx.channel, scheduled_subscription_jobs)
 
-    await ctx.send(f"Successfully unsubsribed.")
+    await ctx.send(f"Successfully unsubscribed.")
 
 @async_scheduling.repeatable_decorator(jobs_dict=scheduled_subscription_jobs, time=PUBLISH_COUNTDOWN_TIME)
 async def publish_daily_countdown(guild_channel):
