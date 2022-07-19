@@ -1,6 +1,5 @@
 from datetime import datetime
 import pandas as pd
-from pprint import pprint
 from table2ascii import table2ascii as t2a, PresetStyle
 from config import DATE_FORMAT
 
