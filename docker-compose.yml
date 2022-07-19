@@ -1,6 +1,6 @@
 version: "3.8"
 services:
-  bot:
+  al-bot:
     image: lemmurb/music-and-al-event-countdown-bot:latest
     build: .
     environment:

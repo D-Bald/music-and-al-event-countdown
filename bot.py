@@ -10,13 +10,7 @@ import utils
 import subscriptions
 from config import PREFIX, PUBLISH_COUNTDOWN_TIME
 
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-
 bot = commands.Bot(command_prefix=PREFIX)
-
-# Dictionary to store the jobs per channel id to be able to unsubscribe and therefore cancel the job for the unsubscribing channel
-scheduled_subscription_jobs = {}
 
 
 @bot.command()
@@ -75,7 +69,7 @@ async def subscribe(ctx):
     """
 
     # Only add new subscription if guild is not subscribed yet
-    if ctx.channel.id not in scheduled_subscription_jobs:
+    if not async_scheduling.is_scheduled(ctx.channel.id):
         await _subscribe_channel(ctx.channel)
 
         await ctx.send(f"Subscription successful.")
@@ -89,22 +83,24 @@ async def _subscribe_channel(channel):
     Args:
         channel_id: discord.py channel
     """
-    async_scheduling.new_task(channel, publish_daily_countdown, PUBLISH_COUNTDOWN_TIME, scheduled_subscription_jobs)
+    async_scheduling.new_task(channel, publish_daily_countdown, PUBLISH_COUNTDOWN_TIME)
 
 @bot.command()
 async def unsubscribe(ctx):
     """
-    Removes a job associated with the guild_id derived from the context from the global dictionary `scheduled_subscription_jobs`
-    and cancel the job from the scheduler.
+    Removes a job associated with the guild_id derived from the context.
 
     Args:
         ctx: discord.py context.
     """
-    async_scheduling.remove_task(ctx.channel, scheduled_subscription_jobs)
+    # Only try to remove subscription if channel is already subscribed
+    if async_scheduling.is_scheduled(ctx.channel.id):
+        async_scheduling.remove_task(ctx.channel)
+        await ctx.send(f"Successfully unsubscribed.")
+    else:
+        await ctx.send(f"Not subscribed yet.")
 
-    await ctx.send(f"Successfully unsubscribed.")
-
-@async_scheduling.repeatable_decorator(jobs_dict=scheduled_subscription_jobs, time=PUBLISH_COUNTDOWN_TIME)
+@async_scheduling.repeatable_decorator(time=PUBLISH_COUNTDOWN_TIME)
 async def publish_daily_countdown(guild_channel):
     """
     Fetches the list of events and publishes it to the given context.
@@ -135,14 +131,12 @@ async def on_ready():
     channels = [await bot.fetch_channel(channel_id) for channel_id in subs_list]
     await asyncio.gather(*[_subscribe_channel(channel) for channel in channels])
 
-    print("Scheduled subscription jobs")
-    print(scheduled_subscription_jobs)
-    print("----------------------")
-
     # Run periodically scheduled tasks
     bot.loop.create_task(async_scheduling.run_scheduled_jobs(sleep=1))
 
 
 if __name__ == "__main__":
-    bot.run(TOKEN)
+    load_dotenv()
+    TOKEN = os.getenv('DISCORD_TOKEN')
 
+    bot.run(TOKEN)
