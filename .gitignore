@@ -6,3 +6,12 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Caches
+__pycache__/
+*.py[cod]
+
+# Data
+/data/*
+# Keep data folder by keeping a dummy file
+!/data/.gitkeepfolder

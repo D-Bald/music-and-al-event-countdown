@@ -3,9 +3,6 @@ async-timeout==3.0.1
 asyncio==3.4.3
 attrs==21.4.0
 chardet==4.0.0
-DateTime==4.4
-discord==1.7.3
-discord.py==1.7.3
 idna==3.3
 multidict==6.0.2
 numpy==1.23.0
@@ -18,4 +15,3 @@ six==1.16.0
 table2ascii==0.3.0
 typing_extensions==4.2.0
 yarl==1.7.2
-zope.interface==5.4.0

@@ -3,7 +3,7 @@ Discord bot to post informations about upcoming events.
 
 ## Usage
 
-Add the bot to your server by clicking [here](https://discord.com/api/oauth2/authorize?client_id=990682663713124412&permissions=543313886272&scope=bot)
+Add the bot to your server by clicking [here](https://discord.com/api/oauth2/authorize?client_id=990682663713124412&permissions=543384075328&scope=bot)
 
 ## Slash Commands
 - `/events` - lists all stored events with countdown

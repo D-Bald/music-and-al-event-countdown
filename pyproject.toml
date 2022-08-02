@@ -1,19 +1,20 @@
-[tool.poetry]
-name = "discordpy-bot-template-with-commands-extension"
-version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
-
-[tool.poetry.dependencies]
-python = "^3.8"
-"discord.py" = "^1.3.4"
-schedule = "^1.1.0"
-pandas = "^1.4.3"
-python-dotenv = "^0.20.0"
-table2ascii = "^0.2.0"
-
-[tool.poetry.dev-dependencies]
-
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+
+[tool]
+[tool.poetry]
+authors = ["Your Name <you@example.com>"]
+description = ""
+name = "python-template"
+version = "0.1.0"
+[tool.poetry.dependencies]
+numpy = "^1.22.2"
+pandas = "^1.4.2"
+python = "^3.8"
+disnake = "^2.5.2"
+dotenv = "^0.0.5"
+table2ascii = "^0.3.0"
+schedule = "^1.1.0"
+python-dotenv = "^0.20.0"
+[tool.poetry.dev-dependencies]
