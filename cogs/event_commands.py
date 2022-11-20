@@ -1,8 +1,9 @@
 import disnake
 from disnake.ext import commands
 
-from repos import event_calendar
-
+from daos import event_calendar
+import daos.event_calendar as ec
+from utils.datetime_tools import format_date
 
 class EventCommands(commands.Cog):
     """Handling interactions to get event infos."""
@@ -16,9 +17,11 @@ class EventCommands(commands.Cog):
         Args:
             inter: disnake.ApplicationCommandInteraction object
         """
-        events = await event_calendar.list_events()
-        output = event_calendar.make_output_table(events)
+        events = await ec.EventCalendar().upcoming_events()
+
+        output = ec.make_output_table(events)
         await inter.send(f"```{output}```")
+    
 
     @commands.slash_command()
     async def next(self, inter: disnake.ApplicationCommandInteraction):
@@ -28,13 +31,13 @@ class EventCommands(commands.Cog):
         Args:
             ctx: discord.py context.
         """
-        event = await event_calendar.get_next_event()
+        event = await ec.EventCalendar().get_next_event()
         embed = make_event_embed(event)
 
         await inter.send(embed=embed)
 
 
-def make_event_embed(event):
+def make_event_embed(event: ec.Event):
     """
     Creates a discord embed for the given event.
 
@@ -43,14 +46,14 @@ def make_event_embed(event):
     Returns:
         discord.py embed
     """
-    join = disnake.Embed(description='__%s__' % (event.titel),
+    join = disnake.Embed(description=f'[{event.titel}]({event.link})',
                          title='Nächste Veranstaltung',
                          colour=0xFFFF)
     # join.set_thumbnail(url = WEBSCRAPER_ERGEBNIS)
     # join.add_field(name = '__Titel__', value = event["titel"])
-    join.add_field(name='Start', value=event.start_datum)
-    join.add_field(name='Ende', value=event.end_datum)
-    join.add_field(name='Link', value=event.link)
+    join.add_field(name='Start', value=format_date(event.start_datum))
+    join.add_field(name='Ende', value=format_date(event.end_datum))
+    join.add_field(name='Verbleibende Tage', value=event.days_left)
 
     # join.set_footer(text ='Created: %s'%time)
 

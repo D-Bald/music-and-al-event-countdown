@@ -1,10 +1,13 @@
 import asyncio
 import functools
 import schedule
+
+from disnake.abc import GuildChannel
+
 from datetime import datetime
 from pprint import pprint
+from daos.subscriptions import Subscriptions
 
-from repos import subscriptions_repo
 
 # Dictionary to store the jobs per channel id to be able to unsubscribe and therefore cancel the job for the unsubscribing channel
 _scheduled_subscription_jobs = {}
@@ -26,7 +29,7 @@ def run_daily_at(time=datetime.now().time().strftime("%H:%M:00")):
     """
     def decorator(func):
         @functools.wraps(func)
-        async def wrapper(guild_channel, *args, **kwargs):
+        async def wrapper(guild_channel: GuildChannel, *args, **kwargs):
             value = await func(guild_channel, *args, **kwargs)
             # Remove and cancel old job
             _cancel_task(guild_channel)
@@ -40,7 +43,7 @@ def run_daily_at(time=datetime.now().time().strftime("%H:%M:00")):
     return decorator
 
 
-def is_scheduled(channel_id):
+def is_scheduled(channel_id: int) -> bool:
     """
     Checks if a job exists that is associated to the given `guild_channel`.
 
@@ -56,7 +59,7 @@ def is_scheduled(channel_id):
     return channel_id in _scheduled_subscription_jobs
 
 
-def new_task(guild_channel, func, time):
+def new_task(guild_channel: GuildChannel, func, time: str):
     """
     Creates new job and stores is it to be remembered on restart.
     
@@ -70,7 +73,7 @@ def new_task(guild_channel, func, time):
     """
     _schedule_task(guild_channel, func, time)
 
-    subscriptions_repo.save_subscribed_channels(guild_channel)
+    Subscriptions.save(guild_channel)
 
     print("----------------------")
     print("Current jobs (channel_id: job_details):\n")
@@ -78,7 +81,7 @@ def new_task(guild_channel, func, time):
     print("----------------------")
 
 
-def remove_task(guild_channel):
+def remove_task(guild_channel: GuildChannel):
     """
     Removes the task associated to the given guild_channel.
 
@@ -90,7 +93,7 @@ def remove_task(guild_channel):
     """
     _cancel_task(guild_channel)
 
-    subscriptions_repo.delete_subscribed_channel(guild_channel)
+    Subscriptions.delete(guild_channel)
 
     print("----------------------")
     print("Current jobs (channel_id: job_details):\n")
@@ -112,7 +115,7 @@ async def run_scheduled_jobs(sleep=1):
         await asyncio.sleep(sleep)
 
 
-def _schedule_task(guild_channel, func, time):
+def _schedule_task(guild_channel: GuildChannel, func, time: str):
     """
     Schedules new job for the given func that is executed with `guild_channel` as parameter at the given time.
     
@@ -125,14 +128,13 @@ def _schedule_task(guild_channel, func, time):
         func: the function that is scheduled as asynchronous task
         time: time in string format that the scheduler uses to schedule the task
     """
-    job = schedule.every().day.at(time).do(asyncio.create_task,
-                                           func(guild_channel))
-    # job = schedule.every().minute.do(asyncio.create_task, func(guild_channel)) # uncomment for debugging
+    job = schedule.every().day.at(time).do(asyncio.create_task, func(guild_channel))
+    # job = schedule.every(10).seconds.do(asyncio.create_task, func(guild_channel)) # uncomment for debugging
 
     _scheduled_subscription_jobs[guild_channel.id] = job
 
 
-def _cancel_task(guild_channel):
+def _cancel_task(guild_channel: GuildChannel):
     """
     Removes the task associated to the given guild_channel in the dictionary and cancels it from scheduler.
 

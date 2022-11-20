@@ -14,7 +14,7 @@ import asyncio
 from datetime import datetime
 from pprint import pprint
 
-from repos import subscriptions_repo
+from daos.subscriptions import Subscriptions
 from utils import subscriptions_controller
 from cogs.subscription_commands import SubscriptionCommands
 
@@ -37,7 +37,7 @@ async def on_ready():
     print_start_message()
 
     # Load saved subscriptions
-    subs_list = subscriptions_repo.read_subscribed_channels()
+    subs_list = Subscriptions.all()
     channels = [
         await bot.fetch_channel(channel_id) for channel_id in subs_list
     ]

@@ -1,10 +1,12 @@
 import disnake
 from disnake.ext import commands
+from disnake.abc import GuildChannel
 
 from config import PUBLISH_COUNTDOWN_TIME
 from cogs.event_commands import make_event_embed
-from repos import event_calendar
 from utils import subscriptions_controller
+
+import daos.event_calendar as ec
 
 
 class SubscriptionCommands(commands.Cog):
@@ -28,7 +30,7 @@ class SubscriptionCommands(commands.Cog):
             await inter.send(f"Already subscribed.")
 
     @classmethod
-    async def subscribe_channel(cls, channel):
+    async def subscribe_channel(cls, channel: GuildChannel):
         """
         Schedules a job to be executed at PUBLISH_COUNTDOWN_TIME from config.py.
 
@@ -54,7 +56,7 @@ class SubscriptionCommands(commands.Cog):
 
     @subscriptions_controller.run_daily_at(time=PUBLISH_COUNTDOWN_TIME)
     @staticmethod
-    async def publish_daily_countdown(guild_channel):
+    async def publish_daily_countdown(guild_channel: GuildChannel):
         """
         Fetches the list of events and publishes it to the given interaction.
     
@@ -64,7 +66,7 @@ class SubscriptionCommands(commands.Cog):
         Args:
             guild_channel: disnake.abc.GuildChannel
         """
-        event = await event_calendar.get_next_event()
+        event = await ec.EventCalendar().get_next_event()
         embed = make_event_embed(event)
 
         await guild_channel.send(embed=embed)

@@ -16,4 +16,4 @@ MIT License. Copyright (c) 2022 David Baldauf.
 
 # TODO
 - get next event dates and more event details via webscraper
-- Missing docstrings (e.g in utils)
+- Missing docstrings and type hints
