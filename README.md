@@ -12,7 +12,7 @@ Add the bot to your server by clicking [here](https://discord.com/api/oauth2/aut
 - `/unsubscribe` - of daily countdown
 
 ## License
-MIT License. Copyright (c) 2022 David Baldauf.
+MIT License. Copyright (c) 2022 David Potschka.
 
 # TODO
 - get next event dates and more event details via webscraper
