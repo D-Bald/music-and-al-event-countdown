@@ -4,4 +4,4 @@ services:
     image: lemmurb/music-and-al-event-countdown-bot:latest
     build: .
     environment:
-      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_TOKEN: ${DISCORD_TOKEN_EVENT_COUNTDOWN}
